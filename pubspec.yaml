@@ -22,6 +22,8 @@ environment:
 
 dependencies:
   sensors:
+  proximity_plugin:
+  enviro_sensors: ^1.0.1
   flutter:
     sdk: flutter
 
