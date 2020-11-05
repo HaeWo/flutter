@@ -24,6 +24,9 @@ dependencies:
   sensors:
   proximity_plugin:
   enviro_sensors: ^1.0.1
+  permission_handler: ^5.0.1+1
+  path_provider: ^1.6.24
+  downloads_path_provider: ^0.1.0
   flutter:
     sdk: flutter
 
