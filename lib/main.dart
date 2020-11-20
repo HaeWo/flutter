@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:downloads_path_provider/downloads_path_provider.dart';
@@ -10,6 +11,7 @@ import 'package:downloads_path_provider/downloads_path_provider.dart';
 import 'package:sensors/sensors.dart';
 import 'package:proximity_plugin/proximity_plugin.dart';
 import 'package:enviro_sensors/enviro_sensors.dart';
+import 'package:geolocator/geolocator.dart';
 
 void main() {
   runApp(MyApp());
@@ -51,7 +53,20 @@ class XYZData {
   }
 }
 
+class ExportSettings {
+  bool accelerometer = false;
+  bool gyroscope = false;
+  bool userAccelerometer = false;
+  bool lightVal = false;
+  bool pressure = false;
+  bool humidity = false;
+  bool ambientTemp = false;
+  bool location = false;
+}
+
 class _MyHomePageState extends State<MyHomePage> {
+  final key = new GlobalKey<ScaffoldState>();
+
   XYZData _accelerometer = new XYZData(0, 0, 0);
   XYZData _gyroscope = new XYZData(0, 0, 0);
   XYZData _userAccelerometer = new XYZData(0, 0, 0);
@@ -63,9 +78,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _start = false;
 
+  Position _position;
+
   Timer t;
 
-  String fileData = "";
+  Map<String, dynamic> fileData = {};
+
+  ExportSettings settings = new ExportSettings();
+
+  double _durationTime = 1.0;
+  double _durationCounter = 0.0;
 
   @override
   void initState() {
@@ -102,14 +124,72 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() => _humidity = event.reading);
     });
 
+    Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
+        .listen((Position position) {
+      setState(() => _position = position);
+    });
+
     t = new Timer.periodic(new Duration(seconds: 1), (Timer t) async {
       if (!_start) return;
+      _durationCounter++;
       print("running");
+      if (_durationCounter < _durationTime) return;
+      Map<String, dynamic> current = {};
+      if (settings.accelerometer) {
+        current["accelerometer"] = [
+          _accelerometer.x,
+          _accelerometer.y,
+          _accelerometer.z
+        ];
+      }
+      if (settings.gyroscope) {
+        current["gyroscope"] = [_gyroscope.x, _gyroscope.y, _gyroscope.z];
+      }
+      if (settings.userAccelerometer) {
+        current["userAccelerometer"] = [
+          _userAccelerometer.x,
+          _userAccelerometer.y,
+          _userAccelerometer.z
+        ];
+      }
 
-      fileData += "Gravity: " + _accelerometer.toString() + "\n";
-      fileData += "Acceleration: " + _userAccelerometer.toString() + "\n";
-      fileData += "Gyroscope: " + _gyroscope.toString() + "\n";
-      fileData += "\n\n";
+      if (settings.lightVal) {
+        current["light"] = _lightVal;
+      }
+      if (settings.pressure) {
+        current["pressure"] = _pressure;
+      }
+      if (settings.pressure) {
+        current["pressure"] = _pressure;
+      }
+      if (settings.humidity) {
+        current["humidity"] = _humidity;
+      }
+      if (settings.ambientTemp) {
+        current["ambientTemp"] = _ambientTemp;
+      }
+
+      if (settings.location) {
+        if (_position == null) {
+          current["location"] = null;
+        } else {
+          current["location"] = {
+            "lat": _position.latitude,
+            "lng": _position.longitude,
+            "altitude": _position.altitude,
+            "speed": _position.speed,
+            "accuracy": _position.accuracy,
+            "heading": _position.heading
+          };
+        }
+      }
+
+      fileData[DateTime.now().millisecondsSinceEpoch.toString()] = current;
+
+      key.currentState.showSnackBar(new SnackBar(
+        duration: new Duration(milliseconds: 500),
+        content: new Text("Wrote new data"),
+      ));
     });
 
     super.initState();
@@ -134,19 +214,100 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<bool> _requestPermissions() async {
-    var status = await Permission.storage.status;
+    var status = await ph.Permission.storage.status;
     if (!status.isGranted) {
       // We didn't ask for permission yet.
-      await openAppSettings();
+      await ph.openAppSettings();
       return false;
     }
 
     return true;
   }
 
+  List<Widget> rowItem(
+      String name, String text, bool value, Function(bool) onChange) {
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            name,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: DefaultTextStyle.of(context).style.fontSize * 0.4),
+          ),
+          Checkbox(value: value, onChanged: onChange),
+        ],
+      ),
+      Row(
+        children: [
+          Text(
+            text,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+                fontSize: DefaultTextStyle.of(context).style.fontSize * 0.45),
+          ),
+        ],
+      ),
+      Padding(
+        padding: EdgeInsets.only(top: 15),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Widget> rows = [];
+    rows.add(Slider(
+      value: _durationTime,
+      min: 1,
+      max: 100,
+      divisions: 100,
+      label: "${_durationTime.round().toString()} Sekunden",
+      onChanged: (double value) {
+        setState(() {
+          _durationTime = value;
+        });
+      },
+    ));
+    rows.addAll(rowItem("Light", "$_lightVal lx", settings.lightVal,
+        (val) => settings.lightVal = val));
+    rows.addAll(rowItem("Pressure", "$_pressure hPa", settings.pressure,
+        (val) => settings.pressure = val));
+    rows.addAll(rowItem("Humidity", "$_humidity %", settings.humidity,
+        (val) => settings.humidity = val));
+    rows.addAll(rowItem("Temperature", "$_ambientTemp °C", settings.ambientTemp,
+        (val) => settings.ambientTemp = val));
+    rows.addAll(rowItem(
+        "Accelerometer (with Gravity)",
+        "[\n${_accelerometer.x},\n${_accelerometer.y},\n${_accelerometer.z}\n]",
+        settings.accelerometer,
+        (val) => settings.accelerometer = val));
+    rows.addAll(rowItem(
+        "Gyroscope",
+        "[\n${_gyroscope.x},\n${_gyroscope.y},\n${_gyroscope.z}\n]",
+        settings.gyroscope,
+        (val) => settings.gyroscope = val));
+    rows.addAll(rowItem(
+        "Accelerometer (without Gravity)",
+        "[\n${_userAccelerometer.x},\n${_userAccelerometer.y},\n${_userAccelerometer.z}\n]",
+        settings.userAccelerometer,
+        (val) => settings.userAccelerometer = val));
+    rows.addAll(rowItem(
+        "Location",
+        _position == null
+            ? "Unknown"
+            : "Lat: ${_position.latitude.toString()}\n"
+                "Lng: ${_position.longitude.toString()}\n"
+                "Heading: ${_position.heading}\n"
+                "Height: ${_position.altitude}\n"
+                "Accuracy: ${_position.accuracy}",
+        settings.location,
+        (val) => settings.location = val));
+
     return Scaffold(
+      key: key,
       appBar: AppBar(
         title: Text(widget.title),
       ),
@@ -154,200 +315,7 @@ class _MyHomePageState extends State<MyHomePage> {
         padding: EdgeInsets.all(8.0),
         child: SingleChildScrollView(
           child: Column(
-            children: <Widget>[
-              // -------- LIGHT --------
-              Row(
-                children: [
-                  Text(
-                    "Light",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "$_lightVal lx",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-
-              // -------- PRESSURE --------
-              Row(
-                children: [
-                  Text(
-                    "Pressure",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "$_pressure hPa",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-
-              // -------- HUMIDITY --------
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Humidity",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "$_humidity %",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-
-              // -------- Temperature --------
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Temperature",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "$_ambientTemp °C",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-
-              // -------- ACCELEROMETER --------
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Accelerometer (with Gravity)",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "[\n${_accelerometer.x},\n${_accelerometer.y},\n${_accelerometer.z}\n]",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-
-              // -------- GYROSCOPE --------
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Gyroscope",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.6),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "[\n${_gyroscope.x},\n${_gyroscope.y},\n${_gyroscope.z}\n]",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-
-              // -------- Accelerometer without gravity --------
-              Padding(
-                padding: EdgeInsets.only(top: 15),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Accelerometer (without Gravity)",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.5),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    "[\n${_userAccelerometer.x},\n${_userAccelerometer.y},\n${_userAccelerometer.z}\n]",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                        fontSize:
-                            DefaultTextStyle.of(context).style.fontSize * 0.45),
-                  ),
-                ],
-              ),
-            ],
+            children: rows,
           ),
         ),
       ),
@@ -362,10 +330,10 @@ class _MyHomePageState extends State<MyHomePage> {
           } else {
             final dir = await _getDownloadDirectory();
             final resPath = path.join(
-                dir.path, "data_${DateTime.now().millisecondsSinceEpoch}.txt");
+                dir.path, "data_${DateTime.now().millisecondsSinceEpoch}.json");
             File f = File(resPath);
-            f.writeAsStringSync(fileData);
-            fileData = "";
+            f.writeAsStringSync(JsonEncoder.withIndent(null).convert(fileData));
+            fileData = {};
           }
 
           setState(() {
