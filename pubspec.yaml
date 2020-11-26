@@ -28,6 +28,8 @@ dependencies:
   path_provider: ^1.6.24
   downloads_path_provider: ^0.1.0
   flutter_map: any
+  select_dialog: ^1.2.1
+  open_file: ^3.0.3
   geolocator: ^6.1.7
   flutter:
     sdk: flutter

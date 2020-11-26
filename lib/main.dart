@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-import 'package:permission_handler/permission_handler.dart' as ph;
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'package:downloads_path_provider/downloads_path_provider.dart';
 
 import 'package:sensors/sensors.dart';
 import 'package:proximity_plugin/proximity_plugin.dart';
 import 'package:enviro_sensors/enviro_sensors.dart';
 import 'package:geolocator/geolocator.dart';
+
+import 'mapview.dart';
+import 'dir.dart';
 
 void main() {
   runApp(MyApp());
@@ -200,30 +200,6 @@ class _MyHomePageState extends State<MyHomePage> {
     t.cancel();
   }
 
-  Future<Directory> _getDownloadDirectory() async {
-    if (Platform.isAndroid) {
-      return await DownloadsPathProvider.downloadsDirectory;
-    }
-
-    // in this example we are using only Android and iOS so I can assume
-    // that you are not trying it for other platforms and the if statement
-    // for iOS is unnecessary
-
-    // iOS directory visible to user
-    return await getApplicationDocumentsDirectory();
-  }
-
-  Future<bool> _requestPermissions() async {
-    var status = await ph.Permission.storage.status;
-    if (!status.isGranted) {
-      // We didn't ask for permission yet.
-      await ph.openAppSettings();
-      return false;
-    }
-
-    return true;
-  }
-
   List<Widget> rowItem(
       String name, String text, bool value, Function(bool) onChange) {
     return [
@@ -311,6 +287,32 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
+      drawer: Drawer(
+        // Add a ListView to the drawer. This ensures the user can scroll
+        // through the options in the drawer if there isn't enough vertical
+        // space to fit everything.
+        child: ListView(
+          // Important: Remove any padding from the ListView.
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              child: Text('Datensammler'),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+            ),
+            ListTile(
+              title: Text('MapView'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MapView()),
+                );
+              },
+            )
+          ],
+        ),
+      ),
       body: Container(
         padding: EdgeInsets.all(8.0),
         child: SingleChildScrollView(
@@ -325,10 +327,10 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: _start ? Colors.redAccent : Colors.blueAccent,
         onPressed: () async {
           if (!_start) {
-            final granted = await _requestPermissions();
+            final granted = await PathUtils.requestPermissions();
             if (!granted) return;
           } else {
-            final dir = await _getDownloadDirectory();
+            final dir = await PathUtils.getDownloadDirectory();
             final resPath = path.join(
                 dir.path, "data_${DateTime.now().millisecondsSinceEpoch}.json");
             File f = File(resPath);
