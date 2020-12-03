@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:praktikum/main.dart';
 import 'package:select_dialog/select_dialog.dart';
 import 'package:path/path.dart' as path;
 import 'package:open_file/open_file.dart';
@@ -19,81 +20,89 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   final key = new GlobalKey<ScaffoldState>();
 
+  bool _addEnabled = true;
   double circleRadius = 3;
   MapController mapController;
-  var circleMarkers = <CircleMarker>[];
-  var pointTime = <int>[];
+  List<CircleMarker> circleMarkers = [];
+  List<int> pointTime = [];
 
-  String accuracy = "PRIORITY_HIGH_ACCURACY";
+  var circleRouteOne = <CircleMarker>[];
+  var circleRouteTwo = <CircleMarker>[];
+
+  String accuracy = "PRIORITY_LOW_POWER";
 
   var fixedRouteOne = <LatLng>[
-    LatLng(51.44755, 7.27101),
-    LatLng(51.44787, 7.27198),
-    LatLng(51.44729, 7.27252),
-    LatLng(51.44697, 7.27149),
-    LatLng(51.44664, 7.27176),
-    LatLng(51.44685, 7.27245),
-    LatLng(51.44659, 7.27269),
-    LatLng(51.44646, 7.27227),
-    LatLng(51.44628, 7.27211),
-    LatLng(51.44618, 7.27217),
-    LatLng(51.44581, 7.27276),
-    LatLng(51.44543, 7.27283),
-    LatLng(51.44526, 7.27285),
-    LatLng(51.44516, 7.27271),
-    LatLng(51.44513, 7.27293),
-    LatLng(51.44525, 7.27284),
-    LatLng(51.44581, 7.27275),
-    LatLng(51.44622, 7.27282),
-    LatLng(51.44629, 7.27295),
+    LatLng(51.48209, 7.21582),
+    LatLng(51.48212, 7.21623),
+    LatLng(51.48201, 7.21629),
+    LatLng(51.48219, 7.21653),
+    LatLng(51.48221, 7.21685),
+    LatLng(51.4821, 7.21713),
+    LatLng(51.48209, 7.21723),
+    LatLng(51.48175, 7.21729),
+    LatLng(51.48073, 7.21715),
+    LatLng(51.48039, 7.21711),
+    LatLng(51.48017, 7.21653),
+  ];
+
+  var fixedPointsOne = <LatLng>[
+    LatLng(51.48209, 7.21602),
+    LatLng(51.48219, 7.21652),
+    LatLng(51.4822, 7.21686),
+    LatLng(51.4821, 7.21719),
+    LatLng(51.48174, 7.2173),
+    LatLng(51.48136, 7.21724),
+    LatLng(51.48073, 7.21715),
+    LatLng(51.4804, 7.21711),
+    LatLng(51.48019, 7.21651),
   ];
 
   var fixedRouteTwo = <LatLng>[
-    LatLng(51.44791, 7.27069),
-    LatLng(51.44841, 7.27176),
-    LatLng(51.44898, 7.27144),
-    LatLng(51.44918, 7.27129),
-    LatLng(51.44933, 7.27099),
-    LatLng(51.44944, 7.27109),
-    LatLng(51.45009, 7.27246),
-    LatLng(51.4504, 7.273),
-    LatLng(51.45068, 7.2733),
-    LatLng(51.45108, 7.27347),
-    LatLng(51.45146, 7.27329),
-    LatLng(51.45155, 7.27342),
-    LatLng(51.45269, 7.27272),
-    LatLng(51.45296, 7.27266),
-    LatLng(51.45302, 7.27308),
-    LatLng(51.45291, 7.27308),
-    LatLng(51.4527, 7.27317),
-    LatLng(51.45265, 7.27337),
-    LatLng(51.45169, 7.27383),
-    LatLng(51.45161, 7.27395),
-    LatLng(51.45079, 7.27374),
-    LatLng(51.45075, 7.27379),
-    LatLng(51.45073, 7.27377),
-    LatLng(51.45053, 7.27448),
-    LatLng(51.45052, 7.27483),
-    LatLng(51.45082, 7.27603),
-    LatLng(51.45038, 7.27638),
-    LatLng(51.4484, 7.27198),
-    LatLng(51.4484, 7.27172),
-    LatLng(51.44792, 7.2707),
+    LatLng(51.47975, 7.22276),
+    LatLng(51.47942, 7.22202),
+    LatLng(51.47912, 7.22253),
+    LatLng(51.47898, 7.22268),
+    LatLng(51.47886, 7.22282),
+    LatLng(51.47799, 7.22382),
+    LatLng(51.47788, 7.22388),
+    LatLng(51.47782, 7.22364),
+    LatLng(51.47793, 7.22348),
+    LatLng(51.47795, 7.22332),
+    LatLng(51.47771, 7.22279),
+    LatLng(51.4786, 7.22175),
+  ];
+
+  var fixedPointsTwo = <LatLng>[
+    LatLng(51.47966, 7.22254),
+    LatLng(51.47938, 7.22209),
+    LatLng(51.47923, 7.22229),
+    LatLng(51.47912, 7.22252),
+    LatLng(51.47888, 7.22279),
+    LatLng(51.47845, 7.22331),
+    LatLng(51.47807, 7.22376),
+    LatLng(51.47789, 7.22352),
+    LatLng(51.4777, 7.22276),
+    LatLng(51.47807, 7.22227),
+    LatLng(51.47837, 7.22193),
   ];
 
   @override
   void initState() {
     mapController = MapController();
-    Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
-        .then((position) {
-      print(position);
-      LatLng currentPos = new LatLng(position.latitude, position.longitude);
-      setState(() {
-        mapController.move(currentPos, 18.0);
-        circleMarkers.add(CircleMarker(
-            point: currentPos,
-            color: Colors.blue.withOpacity(0.7),
-            borderStrokeWidth: 2,
+    setState(() {
+      fixedPointsOne.forEach((element) {
+        circleRouteOne.add(CircleMarker(
+            point: element,
+            color: Colors.deepOrange.withOpacity(0.8),
+            borderStrokeWidth: 0,
+            useRadiusInMeter: true,
+            radius: circleRadius));
+      });
+      fixedPointsTwo.forEach((element) {
+        circleRouteTwo.add(CircleMarker(
+            point: element,
+            color: Colors.deepOrange.withOpacity(0.8),
+            borderStrokeWidth: 0,
             useRadiusInMeter: true,
             radius: circleRadius));
       });
@@ -101,49 +110,66 @@ class _MapViewState extends State<MapView> {
   }
 
   Future<void> addPoint() async {
-    Position position;
-    switch (accuracy.toUpperCase()) {
-      case "PRIORITY_BALANCED_POWER_ACCURACY":
-        position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.medium);
-        break;
-      case "PRIORITY_HIGH_ACCURACY":
-        position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
-        break;
-      case "PRIORITY_NO_POWER":
-        position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.lowest);
-        break;
-      case "PRIORITY_LOW_POWER":
-        position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.low);
-        break;
-      case "GPS_PROVIDER":
-      default:
-        position = await Geolocator.getCurrentPosition(
-            forceAndroidLocationManager: true);
-        break;
+    String currentAccuracy = accuracy.toUpperCase();
+    setState(() => _addEnabled = false);
+
+    LocationAccuracy desiredAccuracy = LocationAccuracy.low;
+    bool forceAndroidLocationManager = false;
+
+    if (currentAccuracy == "PRIORITY_BALANCED_POWER_ACCURACY")
+      desiredAccuracy = LocationAccuracy.medium;
+    else if (currentAccuracy == "PRIORITY_HIGH_ACCURACY")
+      desiredAccuracy = LocationAccuracy.high;
+    else if (currentAccuracy == "PRIORITY_NO_POWER")
+      desiredAccuracy = LocationAccuracy.lowest;
+    else if (currentAccuracy == "PRIORITY_LOW_POWER")
+      desiredAccuracy = LocationAccuracy.low;
+    else if (currentAccuracy == "GPS_PROVIDER") {
+      desiredAccuracy = LocationAccuracy.medium;
+      forceAndroidLocationManager = true;
     }
+
+    Position position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+          forceAndroidLocationManager: forceAndroidLocationManager,
+          desiredAccuracy: desiredAccuracy);
+    } catch (e) {
+      key.currentState.showSnackBar(new SnackBar(
+        duration: new Duration(milliseconds: 1000),
+        backgroundColor: Colors.red[900],
+        content: new Text("Error getting Position ${e.runtimeType.toString()}"),
+      ));
+    }
+
     if (position == null) return;
-    LatLng currentPos = new LatLng(position.latitude, position.longitude);
     key.currentState.showSnackBar(new SnackBar(
       duration: new Duration(milliseconds: 1000),
-      content: new Text("Position saved"),
+      content:
+          new Text("Position saved ($currentAccuracy/${position.accuracy})"),
     ));
+    mapController.move(
+        new LatLng(position.latitude, position.longitude), mapController.zoom);
+    pointTime.add(DateTime.now().millisecondsSinceEpoch);
+
     setState(() {
-      mapController.move(currentPos, mapController.zoom);
       circleMarkers.add(CircleMarker(
-          point: currentPos,
+          point: new LatLng(position.latitude, position.longitude),
           color: Colors.red.withOpacity(0.7),
           useRadiusInMeter: true,
           radius: circleRadius));
-      pointTime.add(DateTime.now().millisecondsSinceEpoch);
+      _addEnabled = true;
     });
   }
 
   Future<bool> onWillPop() {
-    if (circleMarkers.length == 1) return Future.value(true);
+    if (circleMarkers.isEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => MyApp()),
+      );
+      return Future.value(true);
+    }
     AlertDialog alert = AlertDialog(
       title: Text("Exit?"),
       content: Text("You have unsaved changes!"),
@@ -158,7 +184,10 @@ class _MapViewState extends State<MapView> {
           child: Text("Exit"),
           onPressed: () {
             Navigator.of(context).pop();
-            Navigator.of(context).pop();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MyApp()),
+            );
           },
         ),
       ],
@@ -186,8 +215,8 @@ class _MapViewState extends State<MapView> {
         floatingActionButton: FloatingActionButton(
           tooltip: 'Add Point',
           child: Icon(Icons.add),
-          backgroundColor: Colors.blueAccent,
-          onPressed: () => addPoint(),
+          backgroundColor: _addEnabled ? Colors.blueAccent : Colors.red,
+          onPressed: _addEnabled ? () => addPoint() : null,
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: BottomAppBar(
@@ -239,7 +268,7 @@ class _MapViewState extends State<MapView> {
                 onPressed: () async {
                   final granted = await PathUtils.requestPermissions();
                   if (!granted) return;
-                  if (circleMarkers.length <= 1) return;
+                  if (circleMarkers.isEmpty) return;
                   final dir = await PathUtils.getDownloadDirectory();
                   final resPath = path.join(dir.path,
                       "data_map_${DateTime.now().millisecondsSinceEpoch}.json");
@@ -254,8 +283,8 @@ class _MapViewState extends State<MapView> {
                   });
                   f.writeAsStringSync(JsonEncoder.withIndent(null).convert(x));
                   setState(() {
-                    circleMarkers = <CircleMarker>[circleMarkers[0]];
-                    pointTime = <int>[];
+                    circleMarkers.clear();
+                    pointTime.clear();
                   });
                   key.currentState.showSnackBar(new SnackBar(
                     duration: new Duration(milliseconds: 4000),
@@ -286,6 +315,8 @@ class _MapViewState extends State<MapView> {
                         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                     subdomains: ['a', 'b', 'c']),
                 CircleLayerOptions(circles: circleMarkers),
+                CircleLayerOptions(circles: circleRouteOne),
+                CircleLayerOptions(circles: circleRouteTwo),
                 PolylineLayerOptions(
                   polylines: [
                     Polyline(

@@ -89,46 +89,58 @@ class _MyHomePageState extends State<MyHomePage> {
   double _durationTime = 1.0;
   double _durationCounter = 0.0;
 
+  StreamSubscription<AccelerometerEvent> _accelerometerSub;
+  StreamSubscription<UserAccelerometerEvent> _userAccelerometerSub;
+  StreamSubscription<GyroscopeEvent> _gyroscopeSub;
+  StreamSubscription<ProximityEvent> _proximitySub;
+  StreamSubscription<BarometerEvent> _barometerSub;
+  StreamSubscription<LightmeterEvent> _lightSub;
+  StreamSubscription<AmbientTempEvent> _ambientTempSub;
+  StreamSubscription<HumidityEvent> _humiditySub;
+  StreamSubscription<Position> _locationSub;
+
   @override
   void initState() {
-    accelerometerEvents.listen((event) {
+    _accelerometerSub = accelerometerEvents.listen((event) {
       setState(() => _accelerometer = new XYZData(event.x, event.y, event.z));
     });
 
-    userAccelerometerEvents.listen((event) {
+    _userAccelerometerSub = userAccelerometerEvents.listen((event) {
       setState(
           () => _userAccelerometer = new XYZData(event.x, event.y, event.z));
     });
 
-    gyroscopeEvents.listen((event) {
+    _gyroscopeSub = gyroscopeEvents.listen((event) {
       setState(() => _gyroscope = new XYZData(event.x, event.y, event.z));
     });
 
-    proximityEvents.listen((event) {
+    _proximitySub = proximityEvents.listen((event) {
       print(event.x);
     });
 
-    barometerEvents.listen((BarometerEvent event) {
+    _barometerSub = barometerEvents.listen((BarometerEvent event) {
       setState(() => _pressure = event.reading);
     });
 
-    lightmeterEvents.listen((LightmeterEvent event) {
+    _lightSub = lightmeterEvents.listen((LightmeterEvent event) {
       setState(() => _lightVal = event.reading);
     });
 
-    ambientTempEvents.listen((AmbientTempEvent event) {
+    _ambientTempSub = ambientTempEvents.listen((AmbientTempEvent event) {
       setState(() => _ambientTemp = event.reading);
     });
 
-    humidityEvents.listen((HumidityEvent event) {
+    _humiditySub = humidityEvents.listen((HumidityEvent event) {
       setState(() => _humidity = event.reading);
     });
 
-    Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
-        .listen((Position position) {
+    /*_locationSub =
+        Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.high)
+            .listen((Position position) {
+              print("got new position");
       setState(() => _position = position);
     });
-
+    */
     t = new Timer.periodic(new Duration(seconds: 1), (Timer t) async {
       if (!_start) return;
       _durationCounter++;
@@ -196,8 +208,22 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
-  void dispose() {
-    t.cancel();
+  Future<void> dispose() async {
+    Future.delayed(Duration.zero, () async {
+      print("called dispose event");
+      t.cancel();
+      _accelerometerSub.cancel();
+      _userAccelerometerSub.cancel();
+      _gyroscopeSub.cancel();
+      _proximitySub.cancel();
+      _barometerSub.cancel();
+      _lightSub.cancel();
+      _ambientTempSub.cancel();
+      _humiditySub.cancel();
+      _locationSub.cancel();
+      print("finished dispose event");
+    });
+    super.dispose();
   }
 
   List<Widget> rowItem(
@@ -304,7 +330,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ListTile(
               title: Text('MapView'),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => MapView()),
                 );
